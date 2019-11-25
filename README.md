@@ -1,0 +1,2 @@
+# hexapod-kinematics
+ Hexapod kinematics
