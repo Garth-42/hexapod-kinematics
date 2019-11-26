@@ -1,0 +1,2 @@
+# This code contains the kinematic calculations to move a hexapod milling or additive machine.
+
