@@ -1,12 +1,33 @@
 # This code contains the kinematic calculations to move a hexapod milling or additive machine.
 # equations from: https://www.janssenprecisionengineering.com/page/hexapod-kinematics/
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from numpy import linalg as LA
-
 from math import cos, sin, radians    
-
 from itertools import repeat
+
+### Machine Definition ###
+
+# Angle between hinge locations of a leg-pair
+alpha_p = radians(110)  # deg to rad, platform
+alpha_b = radians(110)  # deg to rad, base
+
+# Pitch circle radius
+R_p = 40   # cm, Radius of the circle on which the platform hinges are located
+R_b = 200  # cm, radius of the circle on which the base hinges are located
+
+def circle(r, z, h = 0, k = 0, num_points = 200):
+    #https://stackoverflow.com/questions/56870675/how-to-do-a-3d-circle-in-matplotlib
+    """
+    Returns a list containing points to graph a circle
+    """
+    theta = np.linspace(0, 2*np.pi, num_points)
+    x = r * np.cos(theta)+h
+    y = r * np.sin(theta)+k
+    z= np.full(num_points, z)
+
+    return [x, y, z]
 
 def P_nom(R, theta, Z):
     """
@@ -42,33 +63,19 @@ def dP(dx, dy, dz, dRx, dRy, dRz, M, P_nom):
     return np.array([dx, dy, dz]) + np.matmul( Q() -  np.identity(3), (P_nom - M) )
 
 def main():
-    # Machine Definition
-    # Angle between hinge locations of a leg-pair
-    alpha_p = radians(110)  # degrees to radian, platform
-    alpha_b = radians(110)  # deg to rad, base
 
-    # Pitch circle radius
-    R_p = 40   # cm
-    R_b = 200  # cm
-
-    # Variable Definitions
-    Z_p = 11
-    P_nom_p = []
-    dx = 1
-    dy = 1
-    dz = 1
-    dRx = 0
-    dRy = 0
-    dRz = 0
-    # "location before the differential move at time t = 0?""
-    M = np.array([1,2,4])
-    s = []
+    # Kinematic Calc Inputs
+    # location before the differential move (time = t_0)
+    M = np.array([1,2,29])
+    Z_p = M[2]
     
+    # Differential Move
+    dx, dy, dz =    10, 10, 10
+    dRx, dRy, dRz = 0, 0, 0
+
     # Calculate arrays containing the theta values
     thetas_b = np.array( thetas(alpha_b) )
     thetas_p = np.array( thetas(alpha_p) )
-    #print(thetas_b)
-    #print(thetas_p)
 
     # Calculate nominal hinge location
     P_nom_p = np.array([P_nom(R_p, theta, Z_p) for theta in thetas_p])
@@ -77,20 +84,39 @@ def main():
     #P_nom_p = np.array( list(map( P_nom, repeat(R_p), thetas_p, repeat(Z_p) ) ) )
     #for theta in thetas_p:
     #    P_nom_p.append(P_nom(R_p, theta, Z_p))
-    print(P_nom_p)
+    #print(P_nom_p)
+    
     # Calculate position differential for the platform hinges
     dP_p = [dP(dx, dy, dz, dRx, dRy, dRz, M, P) for P in P_nom_p]
-    print(dP_p)
 
     # New platform hinge locs
     P_delta_p = P_nom_p + dP_p
-    print(P_delta_p)
 
     # Actuator Displacement each leg
-    # take the magnitude of the vector?
+    # Norm takes the magnitude of the vectors, thus giving actuator lengths
+    s = []
     for P_delta, P_b, P_p, in zip(P_delta_p, P_nom_b, P_nom_p):
         s.append( LA.norm(P_delta - P_b) - LA.norm(P_p - P_b) )
-    print(s)
+
+    # Plot the platform
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Nominal Position
+    for base, platform in zip(P_nom_b, P_nom_p):
+        ax.plot([base[0],platform[0]], [base[1], platform[1]], [base[2], platform[2]])
+    x, y, z = circle(h = M[0],k =  M[1], z = M[2], r = R_p) # Plot the platform
+    ax.plot(x, y,z)
+
+    # New Position
+    for base, platform in zip(P_nom_b, P_delta_p):
+        ax.plot([base[0],platform[0]], [base[1], platform[1]], [base[2], platform[2]])
+    x, y, z = circle(h = M[0] + dx,k = M[1] + dy,z = M[2] + dz, r = R_p)
+    ax.plot(x,y, z)
+    x, y, z = circle(r = R_b, z = 0) # Plot the base
+    ax.plot(x, y, z)
+
+    plt.show()
 
 if __name__ == "__main__":
     main()
