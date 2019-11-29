@@ -53,25 +53,34 @@ def dP(dx, dy, dz, dRx, dRy, dRz, M, P_nom):
     """
 
     """
-    def Q():
+    def Q(dRx, dRy, dRz):
         # Rotation matrix
         # use local variables in the func?
         A = np.array( [ [ 1, 0, 0 ], [ 0, cos(dRx), -sin(dRx) ], [ 0, sin(dRx), cos(dRx) ] ] )
         B = np.array( [ [ cos(dRy), 0, sin(dRy) ], [ 0, 1, 0 ], [ -sin(dRy), 0, cos(dRy) ] ] )
         C = np.array( [ [ cos(dRz), -sin(dRz), 0 ], [ sin(dRz), cos(dRz), 0 ], [ 0, 0, 1 ] ] )
         return A * B * C
-    return np.array([dx, dy, dz]) + np.matmul( Q() -  np.identity(3), (P_nom - M) )
+    return np.array([dx, dy, dz]) + np.matmul( Q(dRx, dRy, dRz) -  np.identity(3), (P_nom - M) )
+
+def s(P_delta_p, P_nom_b, P_nom_p):
+    """
+    Calculates actuator lengths after a differential move
+    """
+    s = []
+    for P_delta, P_b, P_p, in zip(P_delta_p, P_nom_b, P_nom_p):
+        s.append( LA.norm(P_delta - P_b) - LA.norm(P_p - P_b) ) # Norm calculates the magnitude of the vectors which is the link length?
+    return s
 
 def main():
 
     # Kinematic Calc Inputs
     # location before the differential move (time = t_0)
-    M = np.array([1,2,29])
+    M = np.array([0,0,0])
     Z_p = M[2]
     
     # Differential Move
     dx, dy, dz =    10, 10, 10
-    dRx, dRy, dRz = 0, 0, 0
+    dRx, dRy, dRz = radians(49), radians(0), radians(0) # Rotation isn't working
 
     # Calculate arrays containing the theta values
     thetas_b = np.array( thetas(alpha_b) )
@@ -80,23 +89,12 @@ def main():
     # Calculate nominal hinge location
     P_nom_p = np.array([P_nom(R_p, theta, Z_p) for theta in thetas_p])
     P_nom_b = np.array([P_nom(R_b, theta, 0) for theta in thetas_b])
-    # Equivalent ways of doing the same calc
-    #P_nom_p = np.array( list(map( P_nom, repeat(R_p), thetas_p, repeat(Z_p) ) ) )
-    #for theta in thetas_p:
-    #    P_nom_p.append(P_nom(R_p, theta, Z_p))
-    #print(P_nom_p)
     
     # Calculate position differential for the platform hinges
     dP_p = [dP(dx, dy, dz, dRx, dRy, dRz, M, P) for P in P_nom_p]
 
     # New platform hinge locs
     P_delta_p = P_nom_p + dP_p
-
-    # Actuator Displacement each leg
-    # Norm takes the magnitude of the vectors, thus giving actuator lengths
-    s = []
-    for P_delta, P_b, P_p, in zip(P_delta_p, P_nom_b, P_nom_p):
-        s.append( LA.norm(P_delta - P_b) - LA.norm(P_p - P_b) )
 
     # Plot the platform
     fig = plt.figure()
