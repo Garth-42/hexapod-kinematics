@@ -10,12 +10,12 @@ from itertools import repeat
 ### Machine Definition ###
 
 # Angle between hinge locations of a leg-pair
-alpha_p = radians(110)  # deg to rad, platform
-alpha_b = radians(110)  # deg to rad, base
+alpha_p = radians(110)  # platform
+alpha_b = radians(110)  # base
 
 # Pitch circle radius
-R_p = 40   # cm, Radius of the circle on which the platform hinges are located
-R_b = 200  # cm, radius of the circle on which the base hinges are located
+R_p = 40   # radius of the circle on which the platform hinges are located
+R_b = 200  # radius of the circle on which the base hinges are located
 
 def circle(r, z, h = 0, k = 0, num_points = 200):
     #https://stackoverflow.com/questions/56870675/how-to-do-a-3d-circle-in-matplotlib
@@ -49,18 +49,21 @@ def thetas(alpha): # in radians, out radians
     """
     return [ radians(270) - alpha/2, radians(270) + alpha/2, radians(30) - alpha/2, radians(30) + alpha/2, radians(150) - alpha/2, radians(150) + alpha/2 ]
 
-def dP(dx, dy, dz, dRx, dRy, dRz, M, P_nom):
-    """
-
-    """
-    def Q(dRx, dRy, dRz):
+def Q(dRx, dRy, dRz):
         # Rotation matrix
         # use local variables in the func?
         A = np.array( [ [ 1, 0, 0 ], [ 0, cos(dRx), -sin(dRx) ], [ 0, sin(dRx), cos(dRx) ] ] )
         B = np.array( [ [ cos(dRy), 0, sin(dRy) ], [ 0, 1, 0 ], [ -sin(dRy), 0, cos(dRy) ] ] )
         C = np.array( [ [ cos(dRz), -sin(dRz), 0 ], [ sin(dRz), cos(dRz), 0 ], [ 0, 0, 1 ] ] )
-        return A * B * C
+        return A*B*C
+        #return np.matmul(np.matmul(A, B), C)
+
+def dP(dx, dy, dz, dRx, dRy, dRz, M, P_nom):
+    """
+
+    """
     return np.array([dx, dy, dz]) + np.matmul( Q(dRx, dRy, dRz) -  np.identity(3), (P_nom - M) )
+    #return np.array([dx, dy, dz]) + (Q(dRx, dRy, dRz) -  np.identity(3)) * (P_nom - M)
 
 def s(P_delta_p, P_nom_b, P_nom_p):
     """
@@ -80,7 +83,7 @@ def main():
     
     # Differential Move
     dx, dy, dz =    10, 10, 10
-    dRx, dRy, dRz = radians(49), radians(0), radians(0) # Rotation isn't working
+    dRx, dRy, dRz = radians(0), radians(0), radians(0) # Rotation isn't working
 
     # Calculate arrays containing the theta values
     thetas_b = np.array( thetas(alpha_b) )
